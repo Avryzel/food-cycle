@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 export default function InventoryPage() {
     const [activeFilter, setActiveFilter] = useState("Semua");
@@ -34,7 +35,7 @@ export default function InventoryPage() {
 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl md:text-4xl font-black text-zinc-900 tracking-tight">Iventory</h1>
+                    <h1 className="text-3xl md:text-4xl font-black text-zinc-900 tracking-tight">Inventory</h1>
                     <p className="text-zinc-500 text-sm md:text-base font-semibold mt-1">
                         Kelola bahan makanan di kulkasmu
                     </p>
@@ -45,6 +46,19 @@ export default function InventoryPage() {
                 >
                     + Tambah Bahan
                 </button>
+            </div>
+
+            <div className="bg-[#EAF5E9]/60 border border-[#8EBA85]/20 rounded-3xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                <div className="space-y-0.5">
+                    <h4 className="text-base font-black text-zinc-900 tracking-tight">Punya Bumbu Dapur Standar?</h4>
+                    <p className="text-zinc-400 text-xs md:text-sm font-semibold">Isi cepat garam, bawang, jahe, dll tanpa harus input manual satu-satu</p>
+                </div>
+                <Link
+                    href="/inventory/staples"
+                    className="bg-[#8EBA85] hover:bg-[#7da874] text-white text-xs md:text-sm font-black px-5 py-3 rounded-2xl shadow-md shadow-[#8EBA85]/10 transition-all active:scale-[0.98] whitespace-nowrap self-stretch sm:self-auto text-center"
+                >
+                    Pilih Bumbu ➔
+                </Link>
             </div>
 
             <div className="space-y-4">
@@ -68,8 +82,8 @@ export default function InventoryPage() {
                             type="button"
                             onClick={() => setActiveFilter(filter)}
                             className={`px-5 py-2 rounded-xl text-xs md:text-sm font-bold tracking-wide border transition-all shrink-0 ${activeFilter === filter
-                                    ? "bg-[#8EBA85] border-[#8EBA85] text-white shadow-sm shadow-[#8EBA85]/30"
-                                    : "bg-white border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:text-zinc-700"
+                                ? "bg-[#8EBA85] border-[#8EBA85] text-white shadow-sm shadow-[#8EBA85]/30"
+                                : "bg-white border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:text-zinc-700"
                                 }`}
                         >
                             {filter}
