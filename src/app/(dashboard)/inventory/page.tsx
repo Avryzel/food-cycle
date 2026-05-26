@@ -40,12 +40,12 @@ export default function InventoryPage() {
                         Kelola bahan makanan di kulkasmu
                     </p>
                 </div>
-                <button
-                    type="button"
-                    className="inline-flex items-center justify-center bg-[#8EBA85] text-white text-sm font-bold px-5 py-3 rounded-xl shadow-md shadow-[#8EBA85]/20 hover:bg-[#7da874] hover:scale-[1.01] active:scale-[0.99] transition-all self-start sm:self-center"
+                <Link
+                    href="/inventory/add"
+                    className="inline-flex items-center justify-center bg-[#8EBA85] text-white text-sm font-bold px-5 py-3 rounded-xl shadow-md shadow-[#8EBA85]/20 hover:bg-[#7da874] hover:scale-[1.01] active:scale-[0.99] transition-all self-start sm:self-center select-none text-center"
                 >
                     + Tambah Bahan
-                </button>
+                </Link>
             </div>
 
             <div className="bg-[#EAF5E9]/60 border border-[#8EBA85]/20 rounded-3xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
