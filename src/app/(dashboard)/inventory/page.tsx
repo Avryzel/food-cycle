@@ -91,20 +91,16 @@ export default function InventoryPage() {
     };
 
     const formatIngredientName = (variantId: number, unitStr: string) => {
-        if (!variantId) return "Bahan Makanan";
+        if (unitStr && unitStr.includes("(") && unitStr.includes(")")) {
+            const bumbuName = unitStr.substring(unitStr.indexOf("(") + 1, unitStr.indexOf(")"));
+            return bumbuName.trim().charAt(0).toUpperCase() + bumbuName.trim().slice(1);
+        }
 
         const matchedIngredient = masterIngredientsDatabase.find((ingredient) =>
             ingredient.variants.some((variant) => parseInt(variant.id, 10) === variantId)
         );
 
-        const baseName = matchedIngredient ? matchedIngredient.name : `Bahan Makanan (#${variantId})`;
-
-        if (unitStr && unitStr.includes("(") && unitStr.includes(")")) {
-            const subVariantText = unitStr.substring(unitStr.indexOf("("), unitStr.indexOf(")") + 1);
-            return `${baseName} ${subVariantText}`;
-        }
-
-        return baseName;
+        return matchedIngredient ? matchedIngredient.name : `Bahan Makanan (#${variantId})`;
     };
 
     const cleanUnitDisplay = (unitStr: string) => {
@@ -264,33 +260,7 @@ export default function InventoryPage() {
                 </div>
             </div>
 
-            {deleteModal.isOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white max-w-sm w-full rounded-3xl p-6 border border-zinc-100 shadow-2xl space-y-5 animate-scale-up">
-                        <div className="space-y-2 text-center">
-                            <div className="text-3xl">🗑️</div>
-                            <h3 className="text-lg font-black text-zinc-900 tracking-tight">Hapus Bahan Makanan?</h3>
-                            <p className="text-zinc-500 text-sm font-medium">Tindakan ini akan mengeluarkan bahan pilihanmu dari kulkas secara permanen.</p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setDeleteModal({ isOpen: false, itemId: null })}
-                                className="w-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold py-3 rounded-xl transition-all text-sm cursor-pointer"
-                            >
-                                Batal
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleConfirmDelete}
-                                className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition-all shadow-md shadow-red-500/10 text-sm cursor-pointer"
-                            >
-                                Ya, Hapus
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+
         </div>
     );
 }
