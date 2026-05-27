@@ -100,7 +100,15 @@ export default function CookPage() {
 
                     const nameLower = cleanName.toLowerCase();
 
-                    if (nameLower.includes("bawang merah")) {
+                    if (nameLower.includes("bayam") || nameLower.includes("kangkung") || nameLower.includes("sawi") || nameLower.includes("daun")) {
+                        categoryLabel = "Sayuran";
+                        iconDisplay = "🥬";
+                    }
+                    else if (nameLower.includes("daging ayam") || nameLower.includes("paha") || nameLower.includes("dada") || nameLower.includes("sayap") || (nameLower.includes("ayam") && !nameLower.includes("bayam"))) {
+                        categoryLabel = "Protein";
+                        iconDisplay = "🍗";
+                    }
+                    else if (nameLower.includes("bawang merah")) {
                         categoryLabel = "Bumbu";
                         iconDisplay = "🧅";
                     } else if (nameLower.includes("bawang putih")) {
@@ -112,9 +120,6 @@ export default function CookPage() {
                     } else if (nameLower.includes("garam") || nameLower.includes("gula") || nameLower.includes("merica") || nameLower.includes("penyedap")) {
                         categoryLabel = "Bumbu";
                         iconDisplay = "🧂";
-                    } else if (nameLower.includes("ayam") || nameLower.includes("paha") || nameLower.includes("dada") || nameLower.includes("sayap")) {
-                        categoryLabel = "Protein";
-                        iconDisplay = "🍗";
                     } else if (nameLower.includes("daging") || nameLower.includes("sapi") || nameLower.includes("kambing")) {
                         categoryLabel = "Protein";
                         iconDisplay = "🥩";
@@ -136,9 +141,6 @@ export default function CookPage() {
                     } else if (nameLower.includes("jagung")) {
                         categoryLabel = "Sayuran";
                         iconDisplay = "🌽";
-                    } else if (nameLower.includes("bayam") || nameLower.includes("kangkung") || nameLower.includes("sawi") || nameLower.includes("daun")) {
-                        categoryLabel = "Sayuran";
-                        iconDisplay = "🥬";
                     } else if (nameLower.includes("jamur")) {
                         categoryLabel = "Sayuran";
                         iconDisplay = "🍄";
@@ -224,7 +226,7 @@ export default function CookPage() {
                 <div className="space-y-6 animate-fade-in">
                     <div className="bg-[#EAF5E9]/60 border border-[#8EBA85]/20 rounded-3xl p-5 flex items-center justify-between shadow-sm">
                         <p className="text-zinc-600 text-sm font-medium max-w-xl leading-relaxed">
-                            AI telah memilih bahan yang harus diolah terlebih dahulu berdasarkan tanggal kadaluarsa paling mepet untuk menekan angka food waste[cite: 35].
+                            AI telah memilih bahan yang harus diolah terlebih dahulu berdasarkan tanggal kadaluarsa paling mepet untuk menekan angka food waste.
                         </p>
                         <span className="text-3xl bg-white p-3 rounded-2xl border border-zinc-100 shadow-sm select-none">🥦</span>
                     </div>
@@ -310,7 +312,7 @@ export default function CookPage() {
                             {loadingDb ? (
                                 <div className="col-span-2 p-10 text-center text-sm font-bold text-zinc-400">Memuat opsi pendamping...</div>
                             ) : filteredIngredients.length === 0 ? (
-                                <div className="col-span-2 p-10 text-center text-sm font-bold text-zinc-400">Tidak ada bahan pendamping yang cocok[cite: 37].</div>
+                                <div className="col-span-2 p-10 text-center text-sm font-bold text-zinc-400">Tidak ada bahan pendamping yang cocok.</div>
                             ) : (
                                 filteredIngredients.map((item, idx) => {
                                     const isSelected = selectedIngredients.includes(item.name);
@@ -382,7 +384,7 @@ export default function CookPage() {
                             <p className="text-xs font-bold text-zinc-500">Bahan Pendamping Pilihanmu:</p>
                             <div className="flex flex-wrap gap-2">
                                 {selectedIngredients.length === 0 ? (
-                                    <span className="text-zinc-400 text-xs font-bold">Tidak ada bahan yang dipilih[cite: 37].</span>
+                                    <span className="text-zinc-400 text-xs font-bold">Tidak ada bahan yang dipilih.</span>
                                 ) : (
                                     selectedIngredients.map((name, idx) => (
                                         <span key={idx} className="bg-[#CCDEC7]/50 text-[#5F8A57] border border-[#8EBA85]/20 px-3 py-1.5 rounded-xl text-xs font-bold">🥦 {name}</span>
