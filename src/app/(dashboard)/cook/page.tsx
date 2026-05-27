@@ -1,6 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { masterIngredientsDatabase } from "@/lib/constants";
+
+interface PantryItem {
+    id: string;
+    variant_id: number;
+    quantity: number;
+    unit: string;
+    expiry_date: string;
+    status: string;
+    name: string;
+    expiry: string;
+    icon: string;
+    time: string;
+    category: string;
+}
 
 export default function CookPage() {
     const [currentStep, setCurrentStep] = useState<number>(1);
@@ -10,10 +26,10 @@ export default function CookPage() {
     const [selectedCategory, setSelectedCategory] = useState("Semua Kategori");
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
 
-    const [selectedIngredients, setSelectedIngredients] = useState<string[]>([
-        "Telur", "Tomat", "Wortel", "Bawang Merah", "Bawang Putih"
-    ]);
+    const [dbIngredients, setDbIngredients] = useState<PantryItem[]>([]);
+    const [loadingDb, setLoadingDb] = useState(true);
 
+    const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
     const [preferenceText, setPreferenceText] = useState("");
 
     useEffect(() => {
@@ -28,7 +44,133 @@ export default function CookPage() {
         if (savedIngredients) {
             setSelectedIngredients(JSON.parse(savedIngredients));
         }
+
+        fetchPantryData();
     }, []);
+
+    const fetchPantryData = async () => {
+        try {
+            setLoadingDb(true);
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) return;
+
+            const { data, error } = await supabase
+                .from("user_pantry")
+                .select("id, variant_id, quantity, unit, expiry_date")
+                .eq("user_id", user.id)
+                .order("expiry_date", { ascending: true });
+
+            if (data) {
+                const mappedData = data.map((item) => {
+                    const expiry = new Date(item.expiry_date);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    const timeDiff = expiry.getTime() - today.getTime();
+                    const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+
+                    let currentStatus = "Aman";
+                    let timeLabel = `${daysLeft} hari lagi`;
+                    if (daysLeft <= 0) {
+                        currentStatus = "Expired";
+                        timeLabel = "Hari ini";
+                    } else if (daysLeft <= 3) {
+                        currentStatus = "Hampir Expired";
+                        timeLabel = daysLeft === 1 ? "Esok hari" : `${daysLeft} hari lagi`;
+                    }
+
+                    let cleanName = `Bahan (#${item.variant_id})`;
+                    let categoryLabel = "Sayuran";
+                    let iconDisplay = "📦";
+
+                    const unitStr = item.unit || "";
+
+                    if (unitStr && unitStr.includes("(") && unitStr.includes(")")) {
+                        const bumbuName = unitStr.substring(unitStr.indexOf("(") + 1, unitStr.indexOf(")"));
+                        cleanName = bumbuName.trim().charAt(0).toUpperCase() + bumbuName.trim().slice(1);
+                        categoryLabel = "Bumbu";
+                    } else {
+                        const matchedIngredient = masterIngredientsDatabase.find((ing) =>
+                            ing.variants.some((v) => parseInt(v.id, 10) === item.variant_id)
+                        );
+                        if (matchedIngredient) {
+                            cleanName = matchedIngredient.name;
+                        }
+                    }
+
+                    const nameLower = cleanName.toLowerCase();
+
+                    if (nameLower.includes("bawang merah")) {
+                        categoryLabel = "Bumbu";
+                        iconDisplay = "🧅";
+                    } else if (nameLower.includes("bawang putih")) {
+                        categoryLabel = "Bumbu";
+                        iconDisplay = "🧄";
+                    } else if (nameLower.includes("cabai") || nameLower.includes("cabe")) {
+                        categoryLabel = "Bumbu";
+                        iconDisplay = "🌶️";
+                    } else if (nameLower.includes("garam") || nameLower.includes("gula") || nameLower.includes("merica") || nameLower.includes("penyedap")) {
+                        categoryLabel = "Bumbu";
+                        iconDisplay = "🧂";
+                    } else if (nameLower.includes("ayam") || nameLower.includes("paha") || nameLower.includes("dada") || nameLower.includes("sayap")) {
+                        categoryLabel = "Protein";
+                        iconDisplay = "🍗";
+                    } else if (nameLower.includes("daging") || nameLower.includes("sapi") || nameLower.includes("kambing")) {
+                        categoryLabel = "Protein";
+                        iconDisplay = "🥩";
+                    } else if (nameLower.includes("telur")) {
+                        categoryLabel = "Protein";
+                        iconDisplay = "🍳";
+                    } else if (nameLower.includes("tahu") || nameLower.includes("tempe")) {
+                        categoryLabel = "Protein";
+                        iconDisplay = "🍞";
+                    } else if (nameLower.includes("susu") || nameLower.includes("uht") || nameLower.includes("keju") || nameLower.includes("yoghurt")) {
+                        categoryLabel = "Dairy";
+                        iconDisplay = nameLower.includes("keju") ? "🧀" : "🥛";
+                    } else if (nameLower.includes("wortel")) {
+                        categoryLabel = "Sayuran";
+                        iconDisplay = "🥕";
+                    } else if (nameLower.includes("tomat")) {
+                        categoryLabel = "Sayuran";
+                        iconDisplay = "🍅";
+                    } else if (nameLower.includes("jagung")) {
+                        categoryLabel = "Sayuran";
+                        iconDisplay = "🌽";
+                    } else if (nameLower.includes("bayam") || nameLower.includes("kangkung") || nameLower.includes("sawi") || nameLower.includes("daun")) {
+                        categoryLabel = "Sayuran";
+                        iconDisplay = "🥬";
+                    } else if (nameLower.includes("jamur")) {
+                        categoryLabel = "Sayuran";
+                        iconDisplay = "🍄";
+                    } else if (nameLower.includes("beras") || nameLower.includes("nasi") || nameLower.includes("mie")) {
+                        categoryLabel = "Lainnya";
+                        iconDisplay = nameLower.includes("beras") ? "🌾" : "🍜";
+                    } else {
+                        iconDisplay = "🥦";
+                    }
+
+                    return {
+                        id: item.id,
+                        variant_id: item.variant_id,
+                        quantity: item.quantity,
+                        unit: unitStr.includes("(") ? unitStr.substring(0, unitStr.indexOf("(")).trim() : unitStr,
+                        expiry_date: item.expiry_date,
+                        expiry: expiry.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+                        status: currentStatus,
+                        name: cleanName,
+                        category: categoryLabel,
+                        icon: iconDisplay,
+                        time: timeLabel
+                    };
+                });
+                setDbIngredients(mappedData);
+            }
+        } catch (err) {
+            console.error("Gagal sinkronisasi komponen dapur:", err);
+        } finally {
+            setLoadingDb(false);
+        }
+    };
 
     useEffect(() => {
         if (isClient) {
@@ -42,24 +184,11 @@ export default function CookPage() {
         }
     }, [selectedIngredients, isClient]);
 
-    const lockedIngredients = [
-        { name: "Bayam", category: "Sayuran", expiry: "22 Mei 2026", time: "1 hari lagi", icon: "🥦" },
-        { name: "Daging Ayam", category: "Protein", expiry: "21 Mei 2026", time: "Hari ini", icon: "🍗" },
-        { name: "Tahu", category: "Protein Nabati", expiry: "22 Mei 2026", time: "1 hari lagi", icon: "🍞" }
-    ];
+    const lockedIngredients = dbIngredients.filter(
+        (item) => item.status === "Expired" || item.status === "Hampir Expired"
+    );
 
-    const availableIngredients = [
-        { name: "Telur", category: "Protein", icon: "🍳" },
-        { name: "Tomat", category: "Sayuran", icon: "🍅" },
-        { name: "Wortel", category: "Sayuran", icon: "🥕" },
-        { name: "Cabai", category: "Bumbu", icon: "🌶️" },
-        { name: "Keju", category: "Dairy", icon: "🧀" },
-        { name: "Jagung", category: "Sayuran", icon: "🌽" },
-        { name: "Daung Bawang", category: "Sayuran", icon: "🌱" },
-        { name: "Jamur", category: "Sayuran", icon: "🍄" },
-        { name: "Bawang Putih", category: "Bumbu", icon: "🧄" },
-        { name: "Bawang Merah", category: "Bumbu", icon: "🧅" }
-    ];
+    const availableIngredients = dbIngredients.filter((item) => item.status === "Aman");
 
     const categories = ["Semua Kategori", "Sayuran", "Protein", "Bumbu", "Dairy"];
 
@@ -95,28 +224,36 @@ export default function CookPage() {
                 <div className="space-y-6 animate-fade-in">
                     <div className="bg-[#EAF5E9]/60 border border-[#8EBA85]/20 rounded-3xl p-5 flex items-center justify-between shadow-sm">
                         <p className="text-zinc-600 text-sm font-medium max-w-xl leading-relaxed">
-                            AI telah memilih bahan yang harus diolah terlebih dahulu berdasarkan tanggal kadaluarsa paling mepet untuk menekan angka food waste.
+                            AI telah memilih bahan yang harus diolah terlebih dahulu berdasarkan tanggal kadaluarsa paling mepet untuk menekan angka food waste[cite: 35].
                         </p>
                         <span className="text-3xl bg-white p-3 rounded-2xl border border-zinc-100 shadow-sm select-none">🥦</span>
                     </div>
 
                     <div className="space-y-3.5">
-                        {lockedIngredients.map((item, idx) => (
-                            <div key={idx} className="bg-white border border-zinc-100 rounded-3xl p-5 flex items-center justify-between shadow-sm">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 bg-zinc-50 rounded-xl border flex items-center justify-center text-xl">{item.icon}</div>
-                                    <div>
-                                        <h3 className="font-bold text-zinc-900">{item.name}</h3>
-                                        <p className="text-zinc-400 text-xs font-semibold">{item.category}</p>
+                        {loadingDb ? (
+                            <div className="p-10 text-center text-sm font-bold text-zinc-400 animate-pulse">Menganalisis masa simpan persediaan...</div>
+                        ) : lockedIngredients.length === 0 ? (
+                            <div className="bg-white border border-dashed border-zinc-200 rounded-3xl p-10 text-center text-zinc-400 font-bold text-sm">
+                                🎉 Stok aman! Tidak ada komoditas kritis atau hampir kadaluarsa dalam kulkasmu hari ini.
+                            </div>
+                        ) : (
+                            lockedIngredients.map((item, idx) => (
+                                <div key={idx} className="bg-white border border-zinc-100 rounded-3xl p-5 flex items-center justify-between shadow-sm">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-14 h-14 bg-zinc-50 rounded-xl border flex items-center justify-center text-xl">{item.icon}</div>
+                                        <div>
+                                            <h3 className="font-bold text-zinc-900">{item.name}</h3>
+                                            <p className="text-zinc-400 text-xs font-semibold">{item.category} ({item.quantity} {item.unit})</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-sm font-semibold text-zinc-500 hidden sm:block">{item.expiry}</div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="bg-red-50 text-red-600 border border-red-100 text-xs font-bold px-3 py-1.5 rounded-xl">{item.time}</span>
+                                        <span className="text-zinc-400 bg-zinc-50 border p-2 rounded-xl">🔒</span>
                                     </div>
                                 </div>
-                                <div className="text-sm font-semibold text-zinc-500 hidden sm:block">{item.expiry}</div>
-                                <div className="flex items-center gap-3">
-                                    <span className="bg-red-50 text-red-600 border border-red-100 text-xs font-bold px-3 py-1.5 rounded-xl">{item.time}</span>
-                                    <span className="text-zinc-400 bg-zinc-50 border p-2 rounded-xl">🔒</span>
-                                </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 </div>
             )}
@@ -170,26 +307,33 @@ export default function CookPage() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-3 max-h-[460px] overflow-y-auto pr-1 pb-10 sm:pb-0">
-                            {filteredIngredients.map((item, idx) => {
-                                const isSelected = selectedIngredients.includes(item.name);
-                                return (
-                                    <button
-                                        key={idx}
-                                        type="button"
-                                        onClick={() => {
-                                            if (isSelected) setSelectedIngredients(selectedIngredients.filter(i => i !== item.name))
-                                            else setSelectedIngredients([...selectedIngredients, item.name])
-                                        }}
-                                        className={`p-4 rounded-2xl text-sm font-bold border transition-all text-center shadow-sm flex flex-col items-center justify-center gap-2.5 ${isSelected
-                                            ? "bg-[#CCDEC7] border-[#8EBA85] text-[#5F8A57]"
-                                            : "bg-white border-zinc-100 text-zinc-700 hover:border-zinc-200"
-                                            }`}
-                                    >
-                                        <span className="text-3xl select-none">{item.icon}</span>
-                                        <span className="tracking-wide">{item.name}</span>
-                                    </button>
-                                );
-                            })}
+                            {loadingDb ? (
+                                <div className="col-span-2 p-10 text-center text-sm font-bold text-zinc-400">Memuat opsi pendamping...</div>
+                            ) : filteredIngredients.length === 0 ? (
+                                <div className="col-span-2 p-10 text-center text-sm font-bold text-zinc-400">Tidak ada bahan pendamping yang cocok[cite: 37].</div>
+                            ) : (
+                                filteredIngredients.map((item, idx) => {
+                                    const isSelected = selectedIngredients.includes(item.name);
+                                    return (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => {
+                                                if (isSelected) setSelectedIngredients(selectedIngredients.filter(i => i !== item.name))
+                                                else setSelectedIngredients([...selectedIngredients, item.name])
+                                            }}
+                                            className={`p-4 rounded-2xl text-sm font-bold border transition-all text-center shadow-sm flex flex-col items-center justify-center gap-2.5 ${isSelected
+                                                ? "bg-[#CCDEC7] border-[#8EBA85] text-[#5F8A57]"
+                                                : "bg-white border-zinc-100 text-zinc-700 hover:border-zinc-200"
+                                                }`}
+                                        >
+                                            <span className="text-3xl select-none">{item.icon}</span>
+                                            <span className="tracking-wide">{item.name}</span>
+                                            <span className="text-zinc-400 text-xs font-semibold">{item.quantity} {item.unit}</span>
+                                        </button>
+                                    );
+                                })
+                            )}
                         </div>
                     </div>
 
@@ -225,17 +369,25 @@ export default function CookPage() {
                         <div className="space-y-2">
                             <p className="text-xs font-bold text-red-500">Prioritas (Wajib Diolah):</p>
                             <div className="flex flex-wrap gap-2">
-                                {lockedIngredients.map((i, idx) => (
-                                    <span key={idx} className="bg-red-50 text-red-600 border border-red-200/60 px-3 py-1.5 rounded-xl text-xs font-bold">🔒 {i.name}</span>
-                                ))}
+                                {lockedIngredients.length === 0 ? (
+                                    <span className="text-zinc-400 text-xs font-bold">Tidak ada</span>
+                                ) : (
+                                    lockedIngredients.map((i, idx) => (
+                                        <span key={idx} className="bg-red-50 text-red-600 border border-red-200/60 px-3 py-1.5 rounded-xl text-xs font-bold">🔒 {i.name}</span>
+                                    ))
+                                )}
                             </div>
                         </div>
                         <div className="space-y-2 pt-2">
                             <p className="text-xs font-bold text-zinc-500">Bahan Pendamping Pilihanmu:</p>
                             <div className="flex flex-wrap gap-2">
-                                {selectedIngredients.map((name, idx) => (
-                                    <span key={idx} className="bg-[#CCDEC7]/50 text-[#5F8A57] border border-[#8EBA85]/20 px-3 py-1.5 rounded-xl text-xs font-bold">🥦 {name}</span>
-                                ))}
+                                {selectedIngredients.length === 0 ? (
+                                    <span className="text-zinc-400 text-xs font-bold">Tidak ada bahan yang dipilih[cite: 37].</span>
+                                ) : (
+                                    selectedIngredients.map((name, idx) => (
+                                        <span key={idx} className="bg-[#CCDEC7]/50 text-[#5F8A57] border border-[#8EBA85]/20 px-3 py-1.5 rounded-xl text-xs font-bold">🥦 {name}</span>
+                                    ))
+                                )}
                             </div>
                         </div>
                     </div>
