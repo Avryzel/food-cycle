@@ -17,17 +17,30 @@ export default function LoginPage() {
         setLoading(true);
         setErrorMsg("");
 
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
 
-        if (error) {
-            setErrorMsg(error.message);
+            if (error) {
+                setErrorMsg(error.message);
+                setLoading(false);
+                return;
+            }
+
+            if (data?.session) {
+                document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=${data.session.expires_in}; SameSite=Lax`;
+
+                router.refresh();
+                router.push("/inventory");
+            } else {
+                setLoading(false);
+                setErrorMsg("Gagal membuat sesi aktif.");
+            }
+        } catch (err) {
             setLoading(false);
-        } else {
-            router.push("/inventory");
-            router.refresh();
+            setErrorMsg("Terjadi kesalahan jaringan.");
         }
     };
 

@@ -1,6 +1,21 @@
-import Link from "next/link";
+"use client";
+
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 export default function LandingPage() {
+    const router = useRouter();
+
+    const handleStartJourney = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session) {
+            router.push("/inventory");
+        } else {
+            router.push("/login");
+        }
+    };
+
     return (
         <div
             className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex flex-col justify-between transition-all duration-300 relative"
@@ -37,12 +52,13 @@ export default function LandingPage() {
                     </p>
 
                     <div className="pt-6 w-full sm:w-auto">
-                        <Link
-                            href="/inventory"
-                            className="inline-flex items-center justify-center w-full sm:w-auto px-8 py-4 rounded-2xl bg-[#8EBA85] text-white font-semibold text-base shadow-lg shadow-[#8EBA85]/30 hover:bg-[#7da874] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                        <button
+                            type="button"
+                            onClick={handleStartJourney}
+                            className="inline-flex items-center justify-center w-full sm:w-auto px-8 py-4 rounded-2xl bg-[#8EBA85] text-white font-semibold text-base shadow-lg shadow-[#8EBA85]/30 hover:bg-[#7da874] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
                         >
                             Mulai Sekarang →
-                        </Link>
+                        </button>
                     </div>
                 </div>
             </main>

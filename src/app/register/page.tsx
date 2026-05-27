@@ -35,10 +35,14 @@ export default function RegisterPage() {
         if (error) {
             setErrorMsg(error.message);
         } else {
-            setSuccessMsg("Pendaftaran berhasil! Silakan cek email kamu.");
+            setSuccessMsg("Pendaftaran berhasil! Mengalihkan ke halaman login...");
             setFullName("");
             setEmail("");
             setPassword("");
+
+            setTimeout(() => {
+                router.push("/login");
+            }, 1500);
         }
     };
 
