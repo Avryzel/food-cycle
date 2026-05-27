@@ -171,7 +171,7 @@ export default function InventoryPage() {
                     href="/inventory/staples"
                     className="bg-[#8EBA85] hover:bg-[#7da874] text-white text-xs md:text-sm font-black px-5 py-3 rounded-2xl shadow-md shadow-[#8EBA85]/10 transition-all active:scale-[0.98] whitespace-nowrap self-stretch sm:self-auto text-center"
                 >
-                    Pumbu Utama ➔
+                    Bumbu Utama ➔
                 </Link>
             </div>
 
