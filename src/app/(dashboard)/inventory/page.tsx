@@ -91,20 +91,16 @@ export default function InventoryPage() {
     };
 
     const formatIngredientName = (variantId: number, unitStr: string) => {
-        if (!variantId) return "Bahan Makanan";
+        if (unitStr && unitStr.includes("(") && unitStr.includes(")")) {
+            const bumbuName = unitStr.substring(unitStr.indexOf("(") + 1, unitStr.indexOf(")"));
+            return bumbuName.trim().charAt(0).toUpperCase() + bumbuName.trim().slice(1);
+        }
 
         const matchedIngredient = masterIngredientsDatabase.find((ingredient) =>
             ingredient.variants.some((variant) => parseInt(variant.id, 10) === variantId)
         );
 
-        const baseName = matchedIngredient ? matchedIngredient.name : `Bahan Makanan (#${variantId})`;
-
-        if (unitStr && unitStr.includes("(") && unitStr.includes(")")) {
-            const subVariantText = unitStr.substring(unitStr.indexOf("("), unitStr.indexOf(")") + 1);
-            return `${baseName} ${subVariantText}`;
-        }
-
-        return baseName;
+        return matchedIngredient ? matchedIngredient.name : `Bahan Makanan (#${variantId})`;
     };
 
     const cleanUnitDisplay = (unitStr: string) => {

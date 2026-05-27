@@ -117,6 +117,19 @@ export default function AddIngredientPage() {
         } finally {
             setLoading(false);
         }
+
+        const formatIngredientName = (variantId: number, unitStr: string) => {
+            if (unitStr && unitStr.includes("(") && unitStr.includes(")")) {
+                const bumbuName = unitStr.substring(unitStr.indexOf("(") + 1, unitStr.indexOf(")"));
+                return bumbuName.trim().charAt(0).toUpperCase() + bumbuName.trim().slice(1);
+            }
+
+            const matchedIngredient = masterIngredientsDatabase.find((ingredient) =>
+                ingredient.variants.some((variant) => parseInt(variant.id, 10) === variantId)
+            );
+
+            return matchedIngredient ? matchedIngredient.name : `Bahan #${variantId}`;
+        };
     };
 
     return (
@@ -140,28 +153,30 @@ export default function AddIngredientPage() {
                     <div className="space-y-4">
                         <h3 className="text-sm font-black text-zinc-800 tracking-tight ml-1">Daftar Bahan Makanan</h3>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                            {masterIngredientsDatabase.map((item) => {
-                                const isSelected = selectedIngredient?.id === item.id;
-                                return (
-                                    <button
-                                        key={item.id}
-                                        type="button"
-                                        onClick={() => handleSelectIngredient(item)}
-                                        disabled={loading}
-                                        className={`group relative border rounded-[2.5rem] p-6 flex flex-col items-center justify-center min-h-[160px] md:min-h-[180px] transition-all select-none ${isSelected
-                                            ? "bg-[#EAF5E9] border-[#8EBA85] shadow-sm scale-[0.99]"
-                                            : "bg-white border-zinc-200/60 hover:border-zinc-300 hover:bg-zinc-50/30"
-                                            }`}
-                                    >
-                                        <div className="w-20 h-20 bg-white border border-zinc-100 rounded-3xl shadow-inner flex items-center justify-center text-3xl transition-transform group-hover:scale-105">
-                                            {item.image}
-                                        </div>
-                                        <span className={`text-sm font-black tracking-tight mt-3 ${isSelected ? "text-[#5F8A57]" : "text-zinc-600"}`}>
-                                            {item.name}
-                                        </span>
-                                    </button>
-                                );
-                            })}
+                            {masterIngredientsDatabase
+                                .filter((item) => !item.isStaple)
+                                .map((item) => {
+                                    const isSelected = selectedIngredient?.id === item.id;
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            onClick={() => handleSelectIngredient(item)}
+                                            disabled={loading}
+                                            className={`group relative border rounded-[2.5rem] p-6 flex flex-col items-center justify-center min-h-[160px] md:min-h-[180px] transition-all select-none ${isSelected
+                                                ? "bg-[#EAF5E9] border-[#8EBA85] shadow-sm scale-[0.99]"
+                                                : "bg-white border-zinc-200/60 hover:border-zinc-300 hover:bg-zinc-50/30"
+                                                }`}
+                                        >
+                                            <div className="w-20 h-20 bg-white border border-zinc-100 rounded-3xl shadow-inner flex items-center justify-center text-3xl transition-transform group-hover:scale-105">
+                                                {item.image}
+                                            </div>
+                                            <span className={`text-sm font-black tracking-tight mt-3 ${isSelected ? "text-[#5F8A57]" : "text-zinc-600"}`}>
+                                                {item.name}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
                         </div>
                     </div>
 
@@ -298,32 +313,34 @@ export default function AddIngredientPage() {
                 )}
             </div>
 
-            {/* MODAL SUKSES TAMBAH MASSAL */}
-            {successModal.isOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white max-w-sm w-full rounded-3xl p-6 border border-zinc-100 shadow-2xl space-y-5 text-center animate-scale-up">
-                        <div className="space-y-2">
-                            <div className="w-16 h-16 bg-[#EAF5E9] text-[#5F8A57] rounded-full flex items-center justify-center text-2xl mx-auto font-bold shadow-inner">
-                                ✓
+       
+            {
+                successModal.isOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-white max-w-sm w-full rounded-3xl p-6 border border-zinc-100 shadow-2xl space-y-5 text-center animate-scale-up">
+                            <div className="space-y-2">
+                                <div className="w-16 h-16 bg-[#EAF5E9] text-[#5F8A57] rounded-full flex items-center justify-center text-2xl mx-auto font-bold shadow-inner">
+                                    ✓
+                                </div>
+                                <h3 className="text-xl font-black text-zinc-900 tracking-tight pt-2">Berhasil Masuk Kulkas!</h3>
+                                <p className="text-zinc-500 text-sm font-medium leading-relaxed">
+                                    Sukses memasukkan <span className="font-bold text-[#5F8A57]">{successModal.count} jenis</span> bahan makanan baru ke dalam sistem inventaris FoodCycle kamu.
+                                </p>
                             </div>
-                            <h3 className="text-xl font-black text-zinc-900 tracking-tight pt-2">Berhasil Masuk Kulkas!</h3>
-                            <p className="text-zinc-500 text-sm font-medium leading-relaxed">
-                                Sukses memasukkan <span className="font-bold text-[#5F8A57]">{successModal.count} jenis</span> bahan makanan baru ke dalam sistem inventaris FoodCycle kamu.
-                            </p>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSuccessModal({ isOpen: false, count: 0 });
+                                    router.push("/inventory");
+                                }}
+                                className="w-full bg-[#8EBA85] hover:bg-[#7da874] text-white font-black py-3.5 rounded-xl transition-all shadow-md shadow-[#8EBA85]/20 text-sm cursor-pointer"
+                            >
+                                Selesai & Lihat Isi Kulkas
+                            </button>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setSuccessModal({ isOpen: false, count: 0 });
-                                router.push("/inventory");
-                            }}
-                            className="w-full bg-[#8EBA85] hover:bg-[#7da874] text-white font-black py-3.5 rounded-xl transition-all shadow-md shadow-[#8EBA85]/20 text-sm cursor-pointer"
-                        >
-                            Selesai & Lihat Isi Kulkas
-                        </button>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
