@@ -69,7 +69,27 @@ Langkah Memasak Terstruktur:
 5. Koreksi rasa, angkat, dan hidangan siap disajikan hangat untuk meminimalisir potensi food waste kelompok!`;
         }
 
-        return NextResponse.json({ recipe: generatedRecipe });
+        let extractedTitle = "Kreasi Kuliner Sisa Kulkas";
+        try {
+            const lines = generatedRecipe.split("\n").map((line: string) => line.trim()).filter((line: string) => line.length > 0);
+
+            if (lines.length > 0) {
+                const firstLine = lines[0];
+                if (firstLine.startsWith("#")) {
+                    extractedTitle = firstLine.replace(/^#+\s*/, "").trim();
+                } else {
+                    extractedTitle = firstLine;
+                }
+            }
+        } catch (e) {
+            console.error("Gagal melakukan parsing judul otomatis dari LLM:", e);
+        }
+
+        return NextResponse.json({
+            recipe: generatedRecipe,
+            title: extractedTitle
+        });
+
     } catch (error) {
         console.error("OpenRouter API Integration Error:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

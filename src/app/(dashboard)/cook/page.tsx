@@ -18,6 +18,9 @@ interface PantryItem {
     category: string;
 }
 
+// 💡 DAFTAR PROTEKSI BUMBU: Komoditas abadi yang tidak boleh dihapus otomatis saat selesai masak
+const IMMUTABLE_STAPLES = ["garam", "gula", "air", "minyak goreng", "merica", "lada", "penyedap"];
+
 export default function CookPage() {
     const [currentStep, setCurrentStep] = useState<number>(1);
     const [isClient, setIsClient] = useState(false);
@@ -33,6 +36,7 @@ export default function CookPage() {
     const [preferenceText, setPreferenceText] = useState("");
 
     const [aiRecipe, setAiRecipe] = useState<string | null>(null);
+    const [recipeTitle, setRecipeTitle] = useState<string>("Kreasi Kuliner Sisa Kulkas"); // 💡 STATE BARU
     const [isGenerating, setIsGenerating] = useState(false);
     const [portion, setPortion] = useState<number>(1);
     const [isSaved, setIsSaved] = useState<boolean>(false);
@@ -235,6 +239,7 @@ export default function CookPage() {
 
             if (data.recipe) {
                 setAiRecipe(data.recipe);
+                setRecipeTitle(data.title || "Rekomendasi Menu Kreatif");
             } else {
                 throw new Error("Format respons bermasalah");
             }
@@ -256,16 +261,11 @@ export default function CookPage() {
                 return;
             }
 
-            const menuTitle = aiRecipe.split("\n")[0]
-                .replace("#", "")
-                .replace(/\*/g, "")
-                .trim() || "Rekomendasi Menu Kreatif";
-
             const { error } = await supabase
                 .from("saved_recipes")
                 .insert({
                     user_id: user.id,
-                    title: menuTitle,
+                    title: recipeTitle,
                     content: aiRecipe,
                     portion: portion
                 });
@@ -285,16 +285,23 @@ export default function CookPage() {
             const { data: { user }, error: authError } = await supabase.auth.getUser();
             if (authError || !user) return;
 
-            const usedIngredientIds = [
-                ...lockedIngredients.map(i => i.id),
-                ...dbIngredients.filter(i => selectedIngredients.includes(i.name)).map(i => i.id)
+            const rawIngredientsToClear = [
+                ...lockedIngredients,
+                ...dbIngredients.filter(i => selectedIngredients.includes(i.name))
             ];
+
+            const verifiedIngredientsToClear = rawIngredientsToClear.filter(item => {
+                return !IMMUTABLE_STAPLES.includes(item.name.toLowerCase());
+            });
+
+            const usedIngredientIds = verifiedIngredientsToClear.map(i => i.id);
 
             const { error: logError } = await supabase
                 .from("kitchen_logs")
                 .insert({
                     user_id: user.id,
                     action_type: "COOKING",
+                    recipe_title: recipeTitle,
                     calculated_weight_kg: 0.25
                 });
 
@@ -314,6 +321,7 @@ export default function CookPage() {
             sessionStorage.removeItem("foodcycle_cook_step");
             sessionStorage.removeItem("foodcycle_selected_ingredients");
             setAiRecipe(null);
+            setRecipeTitle("Kreasi Kuliner Sisa Kulkas");
             setSelectedIngredients([]);
             setPreferenceText("");
             setPortion(1);
@@ -540,7 +548,7 @@ export default function CookPage() {
                             <div className="border-b pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <div>
                                     <span className="bg-[#EAF5E9] text-[#5F8A57] text-xs font-bold px-3 py-1 rounded-lg border border-[#8EBA85]/20">🍲 Rekomendasi Menu</span>
-                                    <h2 className="text-2xl md:text-3xl font-black text-zinc-900 mt-1.5 tracking-tight">Rekomendasi FoodCycle AI</h2>
+                                    <h2 className="text-2xl md:text-3xl font-black text-zinc-900 mt-1.5 tracking-tight">{recipeTitle}</h2>
                                 </div>
                                 <button
                                     type="button"
