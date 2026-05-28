@@ -18,7 +18,6 @@ interface PantryItem {
     category: string;
 }
 
-// 💡 DAFTAR PROTEKSI BUMBU: Komoditas abadi yang tidak boleh dihapus otomatis saat selesai masak
 const IMMUTABLE_STAPLES = ["garam", "gula", "air", "minyak goreng", "merica", "lada", "penyedap"];
 
 export default function CookPage() {
@@ -36,10 +35,21 @@ export default function CookPage() {
     const [preferenceText, setPreferenceText] = useState("");
 
     const [aiRecipe, setAiRecipe] = useState<string | null>(null);
-    const [recipeTitle, setRecipeTitle] = useState<string>("Kreasi Kuliner Sisa Kulkas"); // 💡 STATE BARU
+    const [recipeTitle, setRecipeTitle] = useState<string>("Kreasi Kuliner Sisa Kulkas");
     const [isGenerating, setIsGenerating] = useState(false);
     const [portion, setPortion] = useState<number>(1);
     const [isSaved, setIsSaved] = useState<boolean>(false);
+
+    const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" }>({
+        show: false,
+        message: "",
+        type: "success"
+    });
+
+    const triggerToast = (message: string, type: "success" | "error" = "success") => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
+    };
 
     useEffect(() => {
         setIsClient(true);
@@ -216,7 +226,7 @@ export default function CookPage() {
         ];
 
         if (totalIngredients.length === 0) {
-            alert("Pilih minimal satu bahan makanan untuk mulai memasak!");
+            triggerToast("Pilih minimal satu bahan makanan untuk mulai memasak!", "error");
             return;
         }
 
@@ -245,7 +255,7 @@ export default function CookPage() {
             }
         } catch (error) {
             console.error("Error meracik resep AI:", error);
-            alert("Terjadi kendala jaringan saat meracik resep digital.");
+            triggerToast("Terjadi kendala jaringan saat meracik resep digital.", "error");
             setCurrentStep(3);
         } finally {
             setIsGenerating(false);
@@ -257,7 +267,7 @@ export default function CookPage() {
         try {
             const { data: { user }, error: authError } = await supabase.auth.getUser();
             if (authError || !user) {
-                alert("Sesi Anda berakhir. Silakan login kembali.");
+                triggerToast("Sesi Anda berakhir. Silakan login kembali.", "error");
                 return;
             }
 
@@ -273,10 +283,10 @@ export default function CookPage() {
             if (error) throw error;
 
             setIsSaved(true);
-            alert("Resep sukses diamankan ke cloud Supabase! 🔖");
+            triggerToast("Resep sukses diamankan ke cloud Supabase! 🔖", "success");
         } catch (err) {
             console.error("Gagal mengamankan resep ke database:", err);
-            alert("Sistem gagal mengamankan resep.");
+            triggerToast("Sistem gagal mengamankan resep.", "error");
         }
     };
 
@@ -316,20 +326,22 @@ export default function CookPage() {
                 if (error) throw error;
             }
 
-            alert("Sukses! Menu tercatat di Riwayat & Persediaan Bahan Kulkas Telah Diperbarui! 🎉");
+            triggerToast("Sukses! Menu tercatat di Riwayat & Persediaan Bahan Kulkas Telah Diperbarui! 🎉", "success");
 
-            sessionStorage.removeItem("foodcycle_cook_step");
-            sessionStorage.removeItem("foodcycle_selected_ingredients");
-            setAiRecipe(null);
-            setRecipeTitle("Kreasi Kuliner Sisa Kulkas");
-            setSelectedIngredients([]);
-            setPreferenceText("");
-            setPortion(1);
-            setCurrentStep(1);
-            fetchPantryData();
+            setTimeout(() => {
+                sessionStorage.removeItem("foodcycle_cook_step");
+                sessionStorage.removeItem("foodcycle_selected_ingredients");
+                setAiRecipe(null);
+                setRecipeTitle("Kreasi Kuliner Sisa Kulkas");
+                setSelectedIngredients([]);
+                setPreferenceText("");
+                setPortion(1);
+                setCurrentStep(1);
+                fetchPantryData();
+            }, 1800);
         } catch (err) {
             console.error("Gagal memproses konsumsi stok pangan:", err);
-            alert("Sistem gagal memproses riwayat memasak.");
+            triggerToast("Sistem gagal memproses riwayat memasak.", "error");
         }
     };
 
@@ -636,6 +648,20 @@ export default function CookPage() {
                     {currentStep === 4 && "✓ Selesai Masak"}
                 </button>
             </div>
+
+            {toast.show && (
+                <div className="fixed bottom-6 right-6 z-50 animate-fade-in">
+                    <div className={`px-5 py-3.5 rounded-2xl shadow-xl border text-sm font-black flex items-center gap-3 tracking-tight transition-all duration-300
+                        ${toast.type === "success" 
+                            ? "bg-[#EAF5E9] text-[#5F8A57] border-[#8EBA85]/30 shadow-[#8EBA85]/10" 
+                            : "bg-red-50 text-red-600 border-red-200 shadow-red-200/10"
+                        }`}
+                    >
+                        <span>{toast.type === "success" ? "🎉" : "⚠️"}</span>
+                        {toast.message}
+                    </div>
+                </div>
+            )}
 
         </div>
     );
