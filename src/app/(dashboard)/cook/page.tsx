@@ -35,6 +35,7 @@ export default function CookPage() {
     const [aiRecipe, setAiRecipe] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [portion, setPortion] = useState<number>(1);
+    const [isSaved, setIsSaved] = useState<boolean>(false);
 
     useEffect(() => {
         setIsClient(true);
@@ -93,6 +94,7 @@ export default function CookPage() {
                         const bumbuName = unitStr.substring(unitStr.indexOf("(") + 1, unitStr.indexOf(")"));
                         cleanName = bumbuName.trim().charAt(0).toUpperCase() + bumbuName.trim().slice(1);
                         categoryLabel = "Bumbu";
+                        iconDisplay = "Bars";
                     } else {
                         const matchedIngredient = masterIngredientsDatabase.find((ing) =>
                             ing.variants.some((v) => parseInt(v.id, 10) === item.variant_id)
@@ -215,6 +217,8 @@ export default function CookPage() {
         }
 
         setIsGenerating(true);
+        setIsSaved(false);
+        setCurrentStep(4);
 
         try {
             const response = await fetch("/api/generate-recipe", {
@@ -231,54 +235,70 @@ export default function CookPage() {
 
             if (data.recipe) {
                 setAiRecipe(data.recipe);
-                setCurrentStep(4);
             } else {
                 throw new Error("Format respons bermasalah");
             }
         } catch (error) {
             console.error("Error meracik resep AI:", error);
             alert("Terjadi kendala jaringan saat meracik resep digital.");
+            setCurrentStep(3);
         } finally {
             setIsGenerating(false);
         }
     };
 
-    // ==========================================
-    // 💾 LOGIKA PENYIMPANAN RESEP LOKAL (NTH)
-    // ==========================================
-    const handleSaveRecipeToLocal = () => {
-        if (!aiRecipe) return;
+    const handleSaveRecipeToLocal = async () => {
+        if (!aiRecipe || isSaved) return;
         try {
-            const existing = localStorage.getItem("foodcycle_saved_recipes");
-            const recipes = existing ? JSON.parse(existing) : [];
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) {
+                alert("Sesi Anda berakhir. Silakan login kembali.");
+                return;
+            }
 
-            const menuTitle = aiRecipe.split("\n")[0].replace("###", "").replace("**", "").trim() || "Rekomendasi Menu Kreatif";
+            const menuTitle = aiRecipe.split("\n")[0]
+                .replace("#", "")
+                .replace(/\*/g, "")
+                .trim() || "Rekomendasi Menu Kreatif";
 
-            const newRecipe = {
-                id: crypto.randomUUID(),
-                title: menuTitle,
-                content: aiRecipe,
-                portion: portion,
-                created_at: new Date().toISOString()
-            };
+            const { error } = await supabase
+                .from("saved_recipes")
+                .insert({
+                    user_id: user.id,
+                    title: menuTitle,
+                    content: aiRecipe,
+                    portion: portion
+                });
 
-            recipes.push(newRecipe);
-            localStorage.setItem("foodcycle_saved_recipes", JSON.stringify(recipes));
-            alert("Resep sukses diamankan ke daftar Resep Tersimpan! 🔖");
+            if (error) throw error;
+
+            setIsSaved(true);
+            alert("Resep sukses diamankan ke cloud Supabase! 🔖");
         } catch (err) {
-            console.error("Gagal mengamankan resep:", err);
+            console.error("Gagal mengamankan resep ke database:", err);
+            alert("Sistem gagal mengamankan resep.");
         }
     };
 
-    // ==========================================
-    // ♻️ LOGIKA SELESAI MASAK & PENGURANGAN STOK (NTH)
-    // ==========================================
     const handleCompleteCooking = async () => {
         try {
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) return;
+
             const usedIngredientIds = [
                 ...lockedIngredients.map(i => i.id),
                 ...dbIngredients.filter(i => selectedIngredients.includes(i.name)).map(i => i.id)
             ];
+
+            const { error: logError } = await supabase
+                .from("kitchen_logs")
+                .insert({
+                    user_id: user.id,
+                    action_type: "COOKING",
+                    calculated_weight_kg: 0.25
+                });
+
+            if (logError) throw logError;
 
             if (usedIngredientIds.length > 0) {
                 const { error } = await supabase
@@ -301,7 +321,7 @@ export default function CookPage() {
             fetchPantryData();
         } catch (err) {
             console.error("Gagal memproses konsumsi stok pangan:", err);
-            alert("Sistem gagal memotong kuantitas stok otomatis.");
+            alert("Sistem gagal memproses riwayat memasak.");
         }
     };
 
@@ -501,55 +521,79 @@ export default function CookPage() {
                 </div>
             )}
 
-            {currentStep === 4 && aiRecipe && (
+            {currentStep === 4 && (
                 <div className="w-full bg-white border border-zinc-100 rounded-3xl p-5 md:p-8 space-y-6 shadow-xl shadow-zinc-900/5 animate-fade-in">
-                    <div className="border-b pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                            <span className="bg-[#EAF5E9] text-[#5F8A57] text-xs font-bold px-3 py-1 rounded-lg border border-[#8EBA85]/20">🍲 Rekomendasi Menu</span>
-                            <h2 className="text-2xl md:text-3xl font-black text-zinc-900 mt-1.5 tracking-tight">Rekomendasi FoodCycle AI</h2>
+                    {isGenerating ? (
+                        <div className="flex flex-col items-center justify-center py-16 space-y-5 text-center min-h-[300px] animate-pulse">
+                            <div className="w-12 h-12 border-4 border-[#8EBA85] border-t-transparent rounded-full animate-spin"></div>
+                            <div className="space-y-1.5">
+                                <h3 className="text-lg font-black text-zinc-900 tracking-tight">
+                                    FoodCycle AI Sedang Meracik Resep...
+                                </h3>
+                                <p className="text-sm text-zinc-500 font-medium max-w-xs mx-auto leading-relaxed">
+                                    Menganalisis sisa bumbu dan bahan pangan kulkas Anda untuk menekan angka food waste.
+                                </p>
+                            </div>
                         </div>
-                        <button
-                            type="button"
-                            onClick={handleSaveRecipeToLocal}
-                            className="w-full sm:w-auto px-5 py-3 border border-zinc-200 rounded-xl font-bold text-sm text-zinc-700 hover:bg-zinc-50 flex items-center justify-center gap-2 transition-all shadow-sm"
-                        >
-                            🔖 Simpan Resep
-                        </button>
-                    </div>
+                    ) : aiRecipe ? (
+                        <>
+                            <div className="border-b pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div>
+                                    <span className="bg-[#EAF5E9] text-[#5F8A57] text-xs font-bold px-3 py-1 rounded-lg border border-[#8EBA85]/20">🍲 Rekomendasi Menu</span>
+                                    <h2 className="text-2xl md:text-3xl font-black text-zinc-900 mt-1.5 tracking-tight">Rekomendasi FoodCycle AI</h2>
+                                </div>
+                                <button
+                                    type="button"
+                                    disabled={isSaved}
+                                    onClick={handleSaveRecipeToLocal}
+                                    className={`w-full sm:w-auto px-5 py-3 border rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm ${isSaved
+                                        ? "bg-zinc-100 text-zinc-400 border-zinc-200 cursor-not-allowed"
+                                        : "border-zinc-200 text-zinc-700 hover:bg-zinc-50 bg-white"
+                                        }`}
+                                >
+                                    {isSaved ? "✓ Tersimpan di Cloud" : "🔖 Simpan Resep"}
+                                </button>
+                            </div>
 
-                    <div className="flex items-center gap-4 bg-zinc-50 p-4 rounded-2xl border border-zinc-100 w-fit">
-                        <span className="text-sm font-bold text-zinc-700">🔢 Porsi Sajian:</span>
-                        <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setPortion(Math.max(1, portion - 1))}
-                                className="w-8 h-8 bg-white border border-zinc-200 rounded-lg text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-colors"
-                            >
-                                -
-                            </button>
-                            <span className="text-sm font-black text-zinc-800 w-6 text-center">{portion}</span>
-                            <button
-                                type="button"
-                                onClick={() => setPortion(portion + 1)}
-                                className="w-8 h-8 bg-white border border-zinc-200 rounded-lg text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-colors"
-                            >
-                                +
-                            </button>
+                            <div className="flex items-center gap-4 bg-zinc-50 p-4 rounded-2xl border border-zinc-100 w-fit">
+                                <span className="text-sm font-bold text-zinc-700">🔢 Porsi Sajian:</span>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPortion(Math.max(1, portion - 1))}
+                                        className="w-8 h-8 bg-white border border-zinc-200 rounded-lg text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-colors"
+                                    >
+                                        -
+                                    </button>
+                                    <span className="text-sm font-black text-zinc-800 w-6 text-center">{portion}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPortion(portion + 1)}
+                                        className="w-8 h-8 bg-white border border-zinc-200 rounded-lg text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-colors"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                                {portion > 1 && (
+                                    <span className="text-xs font-semibold text-[#5F8A57] bg-[#EAF5E9] px-2 py-1 rounded-md border border-[#8EBA85]/10 animate-fade-in">
+                                        Takaran otomatis dikalikan {portion}x
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="text-zinc-600 text-sm font-medium leading-relaxed whitespace-pre-line bg-zinc-50/50 p-5 rounded-2xl border border-zinc-100 font-sans">
+                                {aiRecipe}
+                            </div>
+
+                            <div className="bg-zinc-50 p-4 border border-zinc-100 text-zinc-500 text-xs font-semibold leading-relaxed rounded-2xl">
+                                💡 Menekan tombol <span className="font-bold text-zinc-700">"Selesai Masak"</span> di bawah akan menyimpan aktivitas ini ke tab Riwayat dan memotong stok bahan makanan terkait dari kulkas.
+                            </div>
+                        </>
+                    ) : (
+                        <div className="text-center py-10 text-zinc-400 font-bold text-sm">
+                            Gagal memuat resep dari memori penyimpanan. Silakan kembali ke langkah sebelumnya.
                         </div>
-                        {portion > 1 && (
-                            <span className="text-xs font-semibold text-[#5F8A57] bg-[#EAF5E9] px-2 py-1 rounded-md border border-[#8EBA85]/10 animate-fade-in">
-                                Takaran otomatis dikalikan {portion}x
-                            </span>
-                        )}
-                    </div>
-
-                    <div className="text-zinc-600 text-sm font-medium leading-relaxed whitespace-pre-line bg-zinc-50/50 p-5 rounded-2xl border border-zinc-100 font-sans">
-                        {aiRecipe}
-                    </div>
-
-                    <div className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100 text-zinc-500 text-xs font-semibold leading-relaxed">
-                        💡 Menekan tombol <span className="font-bold text-zinc-700">"Selesai Masak"</span> di bawah akan menyimpan aktivitas ini ke tab Riwayat dan memotong stok bahan makanan terkait dari kulkas.
-                    </div>
+                    )}
                 </div>
             )}
 
