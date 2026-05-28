@@ -9,19 +9,25 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "API Key rahasia belum terdaftar di environment server." }, { status: 500 });
         }
 
-        const promptMessage = `Kamu adalah seorang Chef Profesional Indonesia yang berfokus pada efisiensi bahan pangan untuk menekan angka food waste (SDG 12).
-        
-Rancanglah sebuah resep makanan kreatif berbasis kuliner Nusantara yang WAJIB memanfaatkan bahan-bahan utama ini: ${ingredients.join(", ")}.
-Preferensi tambahan dari pengguna: "${preference || 'Rasa gurih standar'}".
+        const promptMessage = `Anda adalah sistem AI Koki Profesional dari aplikasi FoodCycle. Fokus utama Anda adalah gerakan Zero Food Waste (SDG 12), yaitu meracik resep hidangan pintar dengan memanfaatkan sisa bahan makanan yang ada di kulkas pengguna secara maksimal.
 
-BATASAN KETAT BAHAN:
-HANYA gunakan bahan-bahan utama yang disediakan oleh pengguna di atas. Jangan menambahkan komponen bahan atau bumbu baru yang rumit di luar daftar tersebut. Anda hanya diizinkan menambahkan bumbu dasar mutlak yang sewajarnya pasti ada di setiap dapur, seperti air, minyak goreng, garam, dan gula untuk merakit resepnya.
+BAHAN YANG TERSEDIA DI KULKAS USER (BATASAN MUTLAK):
+${ingredients.join(", ")}
 
-Ketentuan Output:
-1. Berikan Nama Menu Kreatif di baris pertama.
-2. Tuliskan rincian takaran estimasi komposisi bahan.
+CATATAN PREFERENSI KHUSUS DARI USER (WAJIB DIPATUHI):
+"${preference || 'Tidak ada catatan khusus, buatkan menu terbaik dari bahan yang ada.'}"
+
+ATURAN ARSITEKTUR KONTRAK GENERASI RESEP (BATASAN KETAT):
+1. **Dilarang Keras Berhalusinasi / Menambah Bahan Baru:** Anda HANYA BOLEH menggunakan bahan utama yang tertulis pada daftar di atas. Jangan pernah berasumsi menambahkan protein, sayur, atau karbohidrat lain yang tidak diinput oleh user (misalnya: JANGAN menambahkan Ayam, Wortel, Kentang, atau Santan jika tidak tertera di daftar di atas).
+2. **Pengecualian Bumbu Dasar:** Anda hanya diizinkan menggunakan bumbu pelengkap standar yang sewajarnya selalu ada di setiap dapur, yaitu: air, minyak goreng, garam, gula, dan merica/lada bubuk. 
+3. **Fleksibilitas Jenis Hidangan:** Jangan memaksakan diri membuat hidangan berat yang rumit (seperti kari atau soto) jika bahan yang diinput user sangat minim (misal: hanya susu UHT, atau hanya telur). Putar otak secara kreatif! Jika bahan minim, buatlah olahan alternatif yang logis dan bisa dimakan/diminum, seperti camilan sederhana, minuman kreasi harian, dessert ringkas, kuah bening minimalis, atau telur dadar modifikasi.
+4. **Integrasi Catatan User:** Perhatikan baik-baik catatan preferensi dari user di atas. Jika user meminta "pedas", "berkuah", "cocok untuk sarapan", atau "tekstur garing", sesuaikan metode memasak Anda dengan catatan tersebut menggunakan bumbu dasar yang diizinkan.
+
+Ketentuan Format Output:
+1. Baris pertama WAJIB langsung berisi Judul Menu Kreatif (Contoh: # Nama Menu). JANGAN ada baris kosong atau kalimat pengantar di atas judul.
+2. Tuliskan rincian takaran estimasi komposisi bahan yang realistis.
 3. Berikan langkah-langkah pembuatan secara terstruktur, ringkas, dan jelas.
-4. Output harus berupa teks Markdown bersih tanpa membungkusnya menggunakan triple backticks (\`\`\`) atau kata "markdown".`;
+4. Output harus berupa teks Markdown bersih tanpa membungkusnya menggunakan triple backticks (\`\`\`) atau kata "markdown" dan *.`;
 
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
@@ -50,9 +56,7 @@ Ketentuan Output:
         }
 
         if (!generatedRecipe || generatedRecipe.trim() === "") {
-            generatedRecipe = `### Hasil Olahan Resep FoodCycle AI 🍲
-
-Rekomendasi Menu Kreatif: Tumis Nusantara Hemat Pangan
+            generatedRecipe = `# Rekomendasi Menu Kreatif FoodCycle AI 🍲
 
 Komposisi Racikan Kulkas:
 ${ingredients.map((name: string) => `- ${name}`).join("\n")}
