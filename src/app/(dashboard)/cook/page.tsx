@@ -230,6 +230,8 @@ export default function CookPage() {
             return;
         }
 
+        const storedAllergies = JSON.parse(localStorage.getItem("foodcycle_allergies") || "[]");
+
         setIsGenerating(true);
         setIsSaved(false);
         setCurrentStep(4);
@@ -240,7 +242,9 @@ export default function CookPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ingredients: totalIngredients,
-                    preference: preferenceText
+                    preference: preferenceText,
+                    portion: portion,
+                    allergies: storedAllergies
                 })
             });
 
@@ -295,13 +299,17 @@ export default function CookPage() {
             const { data: { user }, error: authError } = await supabase.auth.getUser();
             if (authError || !user) return;
 
+            const storedAllergies = JSON.parse(localStorage.getItem("foodcycle_allergies") || "[]");
+
             const rawIngredientsToClear = [
                 ...lockedIngredients,
                 ...dbIngredients.filter(i => selectedIngredients.includes(i.name))
             ];
 
             const verifiedIngredientsToClear = rawIngredientsToClear.filter(item => {
-                return !IMMUTABLE_STAPLES.includes(item.name.toLowerCase());
+                const isStaple = IMMUTABLE_STAPLES.includes(item.name.toLowerCase());
+                const isAllergen = storedAllergies.map((a: string) => a.toLowerCase()).some((allergyName: string) => item.name.toLowerCase().includes(allergyName));
+                return !isStaple && !isAllergen;
             });
 
             const usedIngredientIds = verifiedIngredientsToClear.map(i => i.id);
@@ -411,6 +419,7 @@ export default function CookPage() {
                         <div className="flex gap-3 relative z-30">
                             <div className="relative flex-shrink-0">
                                 <button
+                                    key="category-button"
                                     type="button"
                                     onClick={() => setIsCategoryOpen(!isCategoryOpen)}
                                     className="h-full px-4 bg-white border border-zinc-200 rounded-2xl text-sm font-bold text-zinc-700 shadow-sm hover:bg-zinc-50 flex items-center gap-2 transition-all"
@@ -652,8 +661,8 @@ export default function CookPage() {
             {toast.show && (
                 <div className="fixed bottom-6 right-6 z-50 animate-fade-in">
                     <div className={`px-5 py-3.5 rounded-2xl shadow-xl border text-sm font-black flex items-center gap-3 tracking-tight transition-all duration-300
-                        ${toast.type === "success" 
-                            ? "bg-[#EAF5E9] text-[#5F8A57] border-[#8EBA85]/30 shadow-[#8EBA85]/10" 
+                        ${toast.type === "success"
+                            ? "bg-[#EAF5E9] text-[#5F8A57] border-[#8EBA85]/30 shadow-[#8EBA85]/10"
                             : "bg-red-50 text-red-600 border-red-200 shadow-red-200/10"
                         }`}
                     >

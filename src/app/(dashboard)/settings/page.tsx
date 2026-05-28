@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface AllergyItem {
     id: string;
@@ -11,6 +11,17 @@ interface AllergyItem {
 export default function SettingsPage() {
     const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
     const [isNotificationEnabled, setIsNotificationEnabled] = useState(true);
+    const [isClient, setIsClient] = useState(false);
+
+    const [toast, setToast] = useState<{ show: boolean; message: string }>({
+        show: false,
+        message: ""
+    });
+
+    const triggerToast = (message: string) => {
+        setToast({ show: true, message });
+        setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
+    };
 
     const allergyOptions: AllergyItem[] = [
         { id: "seafood", label: "Seafood", icon: "🦀" },
@@ -20,14 +31,40 @@ export default function SettingsPage() {
         { id: "gandum", label: "Gandum / Gluten", icon: "🌾" },
     ];
 
+    useEffect(() => {
+        setIsClient(true);
+        const storedAllergies = localStorage.getItem("foodcycle_allergies");
+        if (storedAllergies) {
+            setSelectedAllergies(JSON.parse(storedAllergies));
+        }
+        const storedNotif = localStorage.getItem("foodcycle_notif_reminder");
+        if (storedNotif) {
+            setIsNotificationEnabled(JSON.parse(storedNotif));
+        }
+    }, []);
+
     const handleToggleAllergy = (id: string) => {
         setSelectedAllergies((prev) =>
             prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
         );
     };
 
+    const handleSaveChanges = () => {
+        try {
+            localStorage.setItem("foodcycle_allergies", JSON.stringify(selectedAllergies));
+            localStorage.setItem("foodcycle_notif_reminder", JSON.stringify(isNotificationEnabled));
+            triggerToast("Preferensi dapur Anda berhasil diperbarui! 🌿");
+        } catch (e) {
+            console.error("Gagal menyimpan konfigurasi lokal:", e);
+        }
+    };
+
+    if (!isClient) {
+        return <div className="p-8 text-zinc-400 font-semibold animate-pulse">Memuat Pengaturan Dapur...</div>;
+    }
+
     return (
-        <div className="max-w-4xl mx-auto space-y-6 md:space-y-10 animate-fade-in pb-10 px-4 sm:px-0">
+        <div className="max-w-4xl mx-auto space-y-6 md:space-y-10 animate-fade-in pb-10 px-4 sm:px-0 relative">
 
             <div>
                 <h1 className="text-3xl md:text-4xl font-black text-zinc-900 tracking-tight">Pengaturan</h1>
@@ -62,8 +99,8 @@ export default function SettingsPage() {
                                     </div>
 
                                     <div className={`w-6 h-6 rounded-xl border-2 transition-colors flex items-center justify-center ${isSelected
-                                            ? "bg-[#8EBA85] border-[#8EBA85]"
-                                            : "border-zinc-200 bg-white group-hover:border-zinc-300"
+                                        ? "bg-[#8EBA85] border-[#8EBA85]"
+                                        : "border-zinc-200 bg-white group-hover:border-zinc-300"
                                         }`}>
                                         {isSelected && (
                                             <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
@@ -98,13 +135,23 @@ export default function SettingsPage() {
 
                 <button
                     type="button"
-                    onClick={() => alert(`Pengaturan disimpan! Filter aktif: ${selectedAllergies.join(", ") || "Tidak ada"}`)}
+                    onClick={handleSaveChanges}
                     className="w-full bg-[#8EBA85] hover:bg-[#7da874] text-white font-black py-4 rounded-2xl shadow-md shadow-[#8EBA85]/10 transition-all active:scale-[0.99] text-sm text-center"
                 >
                     Simpan Perubahan
                 </button>
 
             </div>
+
+            {toast.show && (
+                <div className="fixed bottom-6 right-6 z-50 animate-fade-in">
+                    <div className="px-5 py-3.5 rounded-2xl shadow-xl border text-sm font-black flex items-center gap-3 tracking-tight bg-[#EAF5E9] text-[#5F8A57] border-[#8EBA85]/30 shadow-[#8EBA85]/10">
+                        <span>🎉</span>
+                        {toast.message}
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }

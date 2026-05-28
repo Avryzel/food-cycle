@@ -2,16 +2,26 @@ import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
     try {
-        const { ingredients, preference } = await request.json();
+        const { ingredients, preference, portion, allergies } = await request.json();
         const apiKey = process.env.OPENROUTER_API_KEY;
 
         if (!apiKey) {
             return NextResponse.json({ error: "API Key rahasia belum terdaftar di environment server." }, { status: 500 });
         }
 
+        const allergyGuardPrompt = allergies && allergies.length > 0
+            ? `DAFTAR PANTANGAN ALERGI USER (BLACKlIST MUTLAK - KEKUASAAN TERTINGGI):
+Jangan pernah menggunakan atau merekomendasikan hidangan yang mengandung elemen dari kategori bahan berikut: ${allergies.join(", ")}. Jika bahan-bahan alergen ini tidak sengaja terinput atau dipilih di daftar bahan kulkas di bawah, Anda WAJIB MENGABAIKANNYA secara total demi keselamatan kesehatan pengguna!`
+            : "DAFTAR PANTANGAN ALERGI USER: Tidak ada pantangan khusus.";
+
         const promptMessage = `Anda adalah sistem AI Koki Profesional dari aplikasi FoodCycle. Fokus utama Anda adalah gerakan Zero Food Waste (SDG 12), yaitu meracik resep hidangan pintar dengan memanfaatkan sisa bahan makanan yang ada di kulkas pengguna secara maksimal.
 
-BAHAN YANG TERSEDIA DI KULKAS USER (BATASAN MUTLAK):
+${allergyGuardPrompt}
+
+TARGET PORSI SAJIAN (BATASAN MUTLAK):
+Buatkan resep ini tepat untuk: ${portion || 1} Porsi. Sesuaikan takaran seluruh komposisi bahan di bawah agar rasional dan presisi untuk jumlah porsi ini.
+
+BAHAN YANG TERSEDIA DI KULKAS USER (BATASAN KEDUA):
 ${ingredients.join(", ")}
 
 CATATAN PREFERENSI KHUSUS DARI USER (WAJIB DIPATUHI):
@@ -20,12 +30,12 @@ CATATAN PREFERENSI KHUSUS DARI USER (WAJIB DIPATUHI):
 ATURAN ARSITEKTUR KONTRAK GENERASI RESEP (BATASAN KETAT):
 1. **Dilarang Keras Berhalusinasi / Menambah Bahan Baru:** Anda HANYA BOLEH menggunakan bahan utama yang tertulis pada daftar di atas. Jangan pernah berasumsi menambahkan protein, sayur, atau karbohidrat lain yang tidak diinput oleh user (misalnya: JANGAN menambahkan Ayam, Wortel, Kentang, atau Santan jika tidak tertera di daftar di atas).
 2. **Pengecualian Bumbu Dasar:** Anda hanya diizinkan menggunakan bumbu pelengkap standar yang sewajarnya selalu ada di setiap dapur, yaitu: air, minyak goreng, garam, gula, dan merica/lada bubuk. 
-3. **Fleksibilitas Jenis Hidangan:** Jangan memaksakan diri membuat hidangan berat yang rumit (seperti kari atau soto) jika bahan yang diinput user sangat minim (misal: hanya susu UHT, atau hanya telur). Putar otak secara kreatif! Jika bahan minim, buatlah olahan alternatif yang logis dan bisa dimakan/diminum, seperti camilan sederhana, minuman kreasi harian, dessert ringkas, kuah bening minimalis, atau telur dadar modifikasi.
+3. **Fleksibilitas Jenis Hidangan:** Jangan memaksakan diri membuat hidangan berat yang rumit (seperti kari atau soto) jika bahan yang diinput user sangat minim. Putar otak secara kreatif! Jika bahan minim, buatlah olahan alternatif yang logis dan bisa dimakan/diminum, seperti camilan sederhana, minuman kreasi harian, dessert ringkas, kuah bening minimalis, atau modifikasi sederhana.
 4. **Integrasi Catatan User:** Perhatikan baik-baik catatan preferensi dari user di atas. Jika user meminta "pedas", "berkuah", "cocok untuk sarapan", atau "tekstur garing", sesuaikan metode memasak Anda dengan catatan tersebut menggunakan bumbu dasar yang diizinkan.
 
 Ketentuan Format Output:
 1. Baris pertama WAJIB langsung berisi Judul Menu Kreatif (Contoh: # Nama Menu). JANGAN ada baris kosong atau kalimat pengantar di atas judul.
-2. Tuliskan rincian takaran estimasi komposisi bahan yang realistis.
+2. Tuliskan rincian takaran estimasi komposisi bahan yang realistis sesuai porsi yang diminta.
 3. Berikan langkah-langkah pembuatan secara terstruktur, ringkas, dan jelas.
 4. Output harus berupa teks Markdown bersih tanpa membungkusnya menggunakan triple backticks (\`\`\`) atau kata "markdown" dan *.`;
 
